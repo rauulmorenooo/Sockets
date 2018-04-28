@@ -55,18 +55,26 @@ void process_HELLO_msg(int sock)
   send(sock, &hello_rp, sizeof(hello_rp), 0);
 }
 
-void process_ADD(int sock, struct FORWARD_chain *chain)
+void process_ADD(int sock, struct FORWARD_chain *chain, char* buffer)
 {
-    char recived_rule[MAX_BUFF_SIZE];
-    recv(sock, &recived_rule, MAX_BUFF_SIZE, 0);
-    printf("RECIVED OK.\nRecived rule is: %s\n", recived_rule);
+    if(chain->first_rule =((= NULL)
+    {
+        chain->first_rule = (strcut fw_rule*) malloc(sizeof(struct fw_rule));
+        chain->first_rule->rule = *((rule*)(buffer + sizeof(short)));
+    }
 
-    // Rule saving as a char array (optional)
-    /*FILE *fd = fopen("rules/rulelist.txt", "r+");
-    fprintf(fd, "%s\n", recived_rule);
-    fclose(fd);*/
+    else
+    {
+        struct fw_rule* aux = chain->first_rule;
+        while(aux->next_rule != NULL)
+            aux = aux->next_rule;
 
+        aux->next_rule = (struct fw_rule) malloc(sizeof(struct fw_rule));
+        aux->next_rule->rule = *((rule*)(buffer + sizeof(short)));
+        aux->next_rule->next_rule = NULL;
+    }
 
+    chain->num_rules++;
 }
 
 void process_LIST(int sock, struct FORWARD_chain *chain){
@@ -106,7 +114,7 @@ int process_msg(int sock, struct FORWARD_chain *chain)
       process_LIST(sock, &chain);
       break;
     case MSG_ADD:
-      process_ADD(sock, &chain);
+      process_ADD(sock, &chain, buffer);
     case MSG_CHANGE:
       break;
     case MSG_DELETE:

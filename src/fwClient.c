@@ -137,47 +137,64 @@ void process_hello_operation(int sock)
 
 void process_add_rule(int sock)
 {
-
-    unsigned short src_dst_addr;
-
     rule srule;
     memset(&srule, '\0', sizeof(srule));
 
-    printf("Introduce the rule with format 'src|dst adress Netmask [sport|dport]':\n");
-
-    /*int op_code;
-    stshort(MSG_ADD, &op_code);
-    send(sock, &op_code, sizeof(op_code), 0);
-
-
     char rule[MAX_BUFF_SIZE];
-
-    printf("Introduce the rule with format 'src|dst adress Netmask [sport | dport]': \n");
-
-    printf("Rule is: %s\n\n", rule);
-    //(sock, &rule, MAX_BUFF_SIZE, 0);
-    /*rule frule;
-    memset(&frule, '\0', sizeof(frule));
-
     char* token;
-    token = strtok(&rule," ");
-    printf("%s\n", token)*/
+    /*
+         * We need a way to accept blank spaces to be accepted
+         * in the client inputted rule.
+         *
+         * If we use a regex it will accept every character until there is a
+         * character implying there is a new line (\n).
+         *
+         * Regex: [^\t\n] -> scanf("%[^\t\n]s", )
+         *
+         * A space is needed at the start of scanf function in order to not be
+         * skipped.
+        */
+    printf("Introduce the rule with format 'src|dst adress netmask [sport|dport] port:\n'");
+    scanf(" %[^\t\n]s", rule);
+
+    // SRC|DST
+    token = strtok(rule, " ");
+    if(strcmp(token, "src") == 0)
+        srule.src_dst_addr = SRC;
+    else
+        if(strcmp(token, "dst") == 0)
+            srule.src_dst_addr = DST;
+
+    //ADRESS
+    token = strtok(NULL, " ");
+    inet_aton(ip_addr, &srule.addr);
+
+    //MASK
+    token = strtok(NULL, " ");
+    srule.mask = atoi(token);
+
+    //SPORT|dport
+    token = strtok(NULL, " ");
+    if(strcmp(token, "dport") == 0)
+        srule.src_dst_port = DST;
+    else
+        if(strcmp(token, "dport" == 0) || strcmp(token, "0") == 0)
+            srule.src_dst_port = SRC;
+
+    //PORT
+    token = (NULL, " ");
+    srule.port = atoi(token);
+
+    char buffer[MAX_BUFF_SIZE];
+    stshort(MSG_ADD, &buffer);
+
+    *((rule*)(buffer + sizeof(short))) = srule;
+
+    send(sock, &buffer, (sizeof(srule) + sizeof(short)), 0);
 }
 
 void process_list_rule(int sock){
-    int op_code;
-    stshort(MSG_LIST, &op_code);
-    send(sock, &op_code, sizeof(op_code), 0);
 
-    printf("FIREWALL FORWARD RULES\n----------------------\n");
-
-    char* rule;
-    recv(sock, &rule, sizeof(rule), 0);
-
-    while(rule != "end"){
-        printf("%s\n", rule);
-        recv(sock, &rule, sizeof(rule), 0);
-    }
 }
 
 /**

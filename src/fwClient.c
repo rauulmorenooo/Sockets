@@ -182,6 +182,7 @@ void process_list_rule(int sock)
 {
     int op_code;
     stshort(MSG_LIST, &op_code);
+    send(sock, &op_code, sizeof(op_code), 0)
 
     rule rrule;
     memset(&rrule, '\0', sizeof(rrule));

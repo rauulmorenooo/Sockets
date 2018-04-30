@@ -148,17 +148,15 @@ void process_add_rule(int sock)
     src_dst_port[MAX_BUFF_SIZE];
     int netmask, port;
 
-    printf("Introduce the rule in the format 'src|dst address netmask
-    [sport|dport] port':\n");
-    scanf(" %s %s %d %s %d", src_dst_address, ip_address, netmask,
-    src_dst_port, port);
+    printf("Introduce the rule in the format (src|dst address netmask [sport|dport] port): \n");
+    scanf("%s %s %d %s %d", &src_dst_address, &ip_address, &netmask, &src_dst_port, &port);
 
     //SRC_DST_ADRESS
     if(strcmp(src_dst_address, "src") == 0)
-        srule.src_dst_address = SRC;
+        srule.src_dst_addr = SRC;
     else
         if(strcmp(src_dst_address, "dst") == 0)
-            srule.src_dst_address = DST;
+            srule.src_dst_addr = DST;
 
     //IP_ADDRESS
     inet_aton(ip_address, &srule.addr);
@@ -176,39 +174,46 @@ void process_add_rule(int sock)
     srule.port = port;
 
     send(sock, &srule, sizeof(srule), 0);
+
+    printf("Rule sent!\n");
 }
 
 void process_list_rule(int sock)
 {
     int op_code;
     stshort(MSG_LIST, &op_code);
-    send(sock, &op_code, sizeof(op_code), 0)
+    send(sock, &op_code, sizeof(op_code), 0);
 
-    rule rrule;
+    printf("|-----------------|\n");
+    printf("|FORWARD RULE LIST|\n");
+    printf("|-----------------|\n");
+
+    rule* rrule = malloc(sizeof(rule));
     memset(&rrule, '\0', sizeof(rrule));
 
     recv(sock, &rrule, sizeof(rrule), 0);
-    int index = 1;
 
+    int index = 1;
+    char src_dst_addr[MAX_BUFF_SIZE], src_dst_port[MAX_BUFF_SIZE];
+
+    //Damnit son
     while(rrule != NULL)
     {
-        char src_dst_address[MAX_BUFF_SIZE], src_dst_port[MAX_BUFF_SIZE];
+        if(rrule->src_dst_addr == SRC)
+            strcpy(src_dst_addr, "src");
+        else if (rrule->src_dst_addr == DST)
+                strcpy(src_dst_addr, "dst");
 
-        if(rrule.src_dst_addr == SRC)
-            src_dst_addr = "src";
-        else
-            if (rrule.src_dst_addr == DST)
-                src_dst_addr = "dst";
+        if(rrule->src_dst_port == SRC)
+            strcpy(src_dst_port, "sport");
+        else if(rrule->src_dst_port == DST)
+            strcpy(src_dst_port, "dport");
 
-        if(rrule.src_dst_port == SRC)
-            src_dst_port = "sport";
-        else if(rrule.src_dst_port == DST)
-            src_dst_port = "dport";
-
-        print("%d %s %s %d %s %d", index, src_dst_addr, inet_ntoa(rrule.addr),
-        rrule.mask, src_dst_port, rrule.port);
+        printf("%d %s %s %d %s %d\n", index, src_dst_addr, inet_ntoa(rrule->addr),
+        rrule->mask, src_dst_port, rrule->port);
 
         recv(sock, &rrule, sizeof(rrule), 0);
+        index++;
     }
 }
 
@@ -288,7 +293,7 @@ int main(int argc, char *argv[]){
   do{
       print_menu();
 		  // getting the user input.
-		  scanf("%d",&menu_option);
+		  scanf(" %d",&menu_option);
 		  printf("\n\n");
 		  process_menu_option(s, menu_option);
 

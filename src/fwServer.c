@@ -59,10 +59,11 @@ void process_ADD(int sock, struct FORWARD_chain *chain)
 {
     rule rrule;
     memset(&rrule, '\0', sizeof(rrule));
-    recv(sock, &rule, sizeof(rrule), 0);
+    recv(sock, &rrule, sizeof(rrule), 0);
 
     if (chain->first_rule == NULL) // Chain is empty
     {
+        printf("Chain is empty!\n");
         chain->first_rule = malloc(sizeof(rrule));
         chain->first_rule->rule = rrule;
         chain->first_rule->next_rule = NULL;
@@ -70,6 +71,7 @@ void process_ADD(int sock, struct FORWARD_chain *chain)
 
     else //Chain isn't empty
     {
+        printf("Chain isn't empty!\n");
         struct fw_rule* aux = chain->first_rule;
 
         while(aux->next_rule != NULL)
@@ -94,10 +96,8 @@ void process_LIST(int sock, struct FORWARD_chain *chain)
         aux = aux->next_rule;
     }
 
-    send(sock, &aux->rule, sizeof(aux->rule), 0); /* It will send a NULL rule
-                                                   * that will 'break' the loop
-                                                   * at client
-                                                   */
+    rule* tmp = NULL;
+    send(sock, &tmp, sizeof(tmp), 0); // Sending a null rule will result in the stop of the loop that shows the rules in the client.
 }
 
 void process_FINISH_msg(int sock)
@@ -130,10 +130,10 @@ int process_msg(int sock, struct FORWARD_chain *chain)
       process_HELLO_msg(sock);
       break;
     case MSG_LIST:
-      process_LIST(sock, &chain);
+      process_LIST(sock, chain);
       break;
     case MSG_ADD:
-      process_ADD(sock, &chain);
+      process_ADD(sock, chain);
     case MSG_CHANGE:
       break;
     case MSG_DELETE:

@@ -55,30 +55,49 @@ void process_HELLO_msg(int sock)
   send(sock, &hello_rp, sizeof(hello_rp), 0);
 }
 
-void process_ADD(int sock, struct FORWARD_chain *chain, char* buffer)
+void process_ADD(int sock, struct FORWARD_chain *chain)
 {
-    if(chain->first_rule =((= NULL)
+    rule rrule;
+    memset(&rrule, '\0', sizeof(rrule));
+    recv(sock, &rule, sizeof(rrule), 0);
+
+    if (chain->first_rule == NULL) // Chain is empty
     {
-        chain->first_rule = (strcut fw_rule*) malloc(sizeof(struct fw_rule));
-        chain->first_rule->rule = *((rule*)(buffer + sizeof(short)));
+        chain->first_rule = malloc(sizeof(rrule));
+        chain->first_rule->rule = rrule;
+        chain->first_rule->next_rule = NULL;
     }
 
-    else
+    else //Chain isn't empty
     {
         struct fw_rule* aux = chain->first_rule;
+
         while(aux->next_rule != NULL)
             aux = aux->next_rule;
 
-        aux->next_rule = (struct fw_rule) malloc(sizeof(struct fw_rule));
-        aux->next_rule->rule = *((rule*)(buffer + sizeof(short)));
+        aux->next_rule = malloc(sizeof(rrule));
+        aux->next_rule->rule = rrule;
         aux->next_rule->next_rule = NULL;
+
     }
 
     chain->num_rules++;
 }
 
-void process_LIST(int sock, struct FORWARD_chain *chain){
+void process_LIST(int sock, struct FORWARD_chain *chain)
+{
+    struct fw_rule* aux = chain->first_rule;
 
+    while(aux != NULL)
+    {
+        send(sock, &aux->rule, sizeof(aux->rule), 0);
+        aux = aux->next_rule;
+    }
+
+    send(sock, &aux->rule, sizeof(aux->rule), 0); /* It will send a NULL rule
+                                                   * that will 'break' the loop
+                                                   * at client
+                                                   */
 }
 
 void process_FINISH_msg(int sock)
@@ -114,7 +133,7 @@ int process_msg(int sock, struct FORWARD_chain *chain)
       process_LIST(sock, &chain);
       break;
     case MSG_ADD:
-      process_ADD(sock, &chain, buffer);
+      process_ADD(sock, &chain);
     case MSG_CHANGE:
       break;
     case MSG_DELETE:

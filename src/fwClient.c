@@ -137,64 +137,78 @@ void process_hello_operation(int sock)
 
 void process_add_rule(int sock)
 {
+    int op_code;
+    stshort(MSG_ADD, &op_code);
+    send(sock, &op_code, sizeof(op_code), 0);
+
     rule srule;
     memset(&srule, '\0', sizeof(srule));
 
-    char rule[MAX_BUFF_SIZE];
-    char* token;
-    /*
-         * We need a way to accept blank spaces to be accepted
-         * in the client inputted rule.
-         *
-         * If we use a regex it will accept every character until there is a
-         * character implying there is a new line (\n).
-         *
-         * Regex: [^\t\n] -> scanf("%[^\t\n]s", )
-         *
-         * A space is needed at the start of scanf function in order to not be
-         * skipped.
-        */
-    printf("Introduce the rule with format 'src|dst adress netmask [sport|dport] port:\n'");
-    scanf(" %[^\t\n]s", rule);
+    char src_dst_address[MAX_BUFF_SIZE], ip_address[MAX_BUFF_SIZE],
+    src_dst_port[MAX_BUFF_SIZE];
+    int netmask, port;
 
-    // SRC|DST
-    token = strtok(rule, " ");
-    if(strcmp(token, "src") == 0)
-        srule.src_dst_addr = SRC;
+    printf("Introduce the rule in the format 'src|dst address netmask
+    [sport|dport] port':\n");
+    scanf(" %s %s %d %s %d", src_dst_address, ip_address, netmask,
+    src_dst_port, port);
+
+    //SRC_DST_ADRESS
+    if(strcmp(src_dst_address, "src") == 0)
+        srule.src_dst_address = SRC;
     else
-        if(strcmp(token, "dst") == 0)
-            srule.src_dst_addr = DST;
+        if(strcmp(src_dst_address, "dst") == 0)
+            srule.src_dst_address = DST;
 
-    //ADRESS
-    token = strtok(NULL, " ");
-    inet_aton(ip_addr, &srule.addr);
+    //IP_ADDRESS
+    inet_aton(ip_address, &srule.addr);
 
-    //MASK
-    token = strtok(NULL, " ");
-    srule.mask = atoi(token);
+    //NETMASK
+    srule.mask = netmask;
 
-    //SPORT|dport
-    token = strtok(NULL, " ");
-    if(strcmp(token, "dport") == 0)
+    //SRC_DST_PORT
+    if(strcmp(src_dst_port, "dport") == 0)
         srule.src_dst_port = DST;
     else
-        if(strcmp(token, "dport" == 0) || strcmp(token, "0") == 0)
-            srule.src_dst_port = SRC;
+        srule.src_dst_port = SRC;
 
     //PORT
-    token = (NULL, " ");
-    srule.port = atoi(token);
+    srule.port = port;
 
-    char buffer[MAX_BUFF_SIZE];
-    stshort(MSG_ADD, &buffer);
-
-    *((rule*)(buffer + sizeof(short))) = srule;
-
-    send(sock, &buffer, (sizeof(srule) + sizeof(short)), 0);
+    send(sock, &srule, sizeof(srule), 0);
 }
 
-void process_list_rule(int sock){
+void process_list_rule(int sock)
+{
+    int op_code;
+    stshort(MSG_LIST, &op_code);
 
+    rule rrule;
+    memset(&rrule, '\0', sizeof(rrule));
+
+    recv(sock, &rrule, sizeof(rrule), 0);
+    int index = 1;
+
+    while(rrule != NULL)
+    {
+        char src_dst_address[MAX_BUFF_SIZE], src_dst_port[MAX_BUFF_SIZE];
+
+        if(rrule.src_dst_addr == SRC)
+            src_dst_addr = "src";
+        else
+            if (rrule.src_dst_addr == DST)
+                src_dst_addr = "dst";
+
+        if(rrule.src_dst_port == SRC)
+            src_dst_port = "sport";
+        else if(rrule.src_dst_port == DST)
+            src_dst_port = "dport";
+
+        print("%d %s %s %d %s %d", index, src_dst_addr, inet_ntoa(rrule.addr),
+        rrule.mask, src_dst_port, rrule.port);
+
+        recv(sock, &rrule, sizeof(rrule), 0);
+    }
 }
 
 /**

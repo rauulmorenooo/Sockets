@@ -55,32 +55,36 @@ void process_HELLO_msg(int sock)
   send(sock, &hello_rp, sizeof(hello_rp), 0);
 }
 
-void process_ADD(int sock, struct FORWARD_chain *chain)
+void process_ADD(int sock, struct FORWARD_chain *chain, char* buffer)
 {
-    rule rrule;
-    memset(&rrule, '\0', sizeof(rrule));
-    recv(sock, &rrule, sizeof(rrule), 0);
+    int offset = sizeof(short);
+    char src_dst_addr[MAX_BUFF_SIZE], src_dst_port[MAX_BUFF_SIZE];
 
-    if (chain->first_rule == NULL) // Chain is empty
+    if(chain->first_rule == NULL) //Chain is empty
     {
-        printf("Chain is empty!\n");
-        chain->first_rule = malloc(sizeof(rrule));
-        chain->first_rule->rule = rrule;
+        printf("Chain is empty. Adding recived rule\n");
+        chain->first_rule = (struct fw_rule*) malloc(sizeof(struct fw_rule));
+        memcpy(&chain->first_rule->rule, (buffer + offset), sizeof(buffer) + sizeof(offset));
         chain->first_rule->next_rule = NULL;
+        printf("Recived rule: ");
+        print(chain->first_rule->rule);
+        printf("\n");
     }
 
-    else //Chain isn't empty
+    else
     {
-        printf("Chain isn't empty!\n");
+        printf("Chain isn't empty. Adding recived rule at the end of the chain\n");
         struct fw_rule* aux = chain->first_rule;
 
         while(aux->next_rule != NULL)
             aux = aux->next_rule;
 
-        aux->next_rule = malloc(sizeof(rrule));
-        aux->next_rule->rule = rrule;
+        aux->next_rule = (struct fw_rule*) malloc(sizeof(struct fw_rule));
+        memcpy(&aux->next_rule->rule, (buffer + offset), sizeof(buffer) + sizeof(offset));
         aux->next_rule->next_rule = NULL;
-
+        printf("Recived rule: ");
+        print(aux->next_rule->rule);
+        printf("\n");
     }
 
     chain->num_rules++;
@@ -88,16 +92,28 @@ void process_ADD(int sock, struct FORWARD_chain *chain)
 
 void process_LIST(int sock, struct FORWARD_chain *chain)
 {
+    int offset = 0;
+    char buffer[MAX_BUFF_SIZE];
+    memset(buffer, 0, sizeof(buffer));
+    stshort(MSG_RULES, buffer);
+    offset += sizeof(short);
+
+    memcpy(buffer, &chain->num_rules, sizeof(chain->num_rules));
+    offset += sizeof(short);
+
     struct fw_rule* aux = chain->first_rule;
 
     while(aux != NULL)
     {
-        send(sock, &aux->rule, sizeof(aux->rule), 0);
+        printf("Appending rule: ");
+        print(aux->rule);
+        printf(" to the buffer\n");
+        memcpy(buffer + offset, &aux->rule, sizeof(aux->rule));
+        offset += sizeof(aux->rule);
         aux = aux->next_rule;
     }
 
-    rule* tmp = NULL;
-    send(sock, &tmp, sizeof(tmp), 0); // Sending a null rule will result in the stop of the loop that shows the rules in the client.
+    send(sock, buffer, offset, 0);
 }
 
 void process_FINISH_msg(int sock)
@@ -133,7 +149,7 @@ int process_msg(int sock, struct FORWARD_chain *chain)
       process_LIST(sock, chain);
       break;
     case MSG_ADD:
-      process_ADD(sock, chain);
+      process_ADD(sock, chain, buffer);
     case MSG_CHANGE:
       break;
     case MSG_DELETE:
@@ -183,10 +199,9 @@ int process_msg(int sock, struct FORWARD_chain *chain)
       close(s_serv);
 
       do{
-          finish = process_msg(s2, &chain);
+         finish = process_msg(s2, &chain);
       }while(!finish);
 
-      //close(s2);
       printf("Closing Server...\n");
       exit(0);
   }

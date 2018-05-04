@@ -137,12 +137,10 @@ void process_hello_operation(int sock)
 
 void process_add_rule(int sock)
 {
-    int op_code;
-    stshort(MSG_ADD, &op_code);
-    send(sock, &op_code, sizeof(op_code), 0);
+    char buffer[MAX_BUFF_SIZE];
+    int offset = 0;
 
-    rule srule;
-    memset(&srule, '\0', sizeof(srule));
+    memset(buffer, 0, sizeof(buffer));
 
     char src_dst_address[MAX_BUFF_SIZE], ip_address[MAX_BUFF_SIZE],
     src_dst_port[MAX_BUFF_SIZE];
@@ -151,31 +149,34 @@ void process_add_rule(int sock)
     printf("Introduce the rule in the format (src|dst address netmask [sport|dport] port): \n");
     scanf("%s %s %d %s %d", &src_dst_address, &ip_address, &netmask, &src_dst_port, &port);
 
-    //SRC_DST_ADRESS
+    stshort(MSG_ADD, buffer);
+    offset += sizeof(short);
+
+    rule srule;
+
     if(strcmp(src_dst_address, "src") == 0)
         srule.src_dst_addr = SRC;
     else
         if(strcmp(src_dst_address, "dst") == 0)
             srule.src_dst_addr = DST;
 
-    //IP_ADDRESS
     inet_aton(ip_address, &srule.addr);
 
-    //NETMASK
     srule.mask = netmask;
 
-    //SRC_DST_PORT
     if(strcmp(src_dst_port, "dport") == 0)
         srule.src_dst_port = DST;
     else
         srule.src_dst_port = SRC;
 
-    //PORT
     srule.port = port;
 
-    send(sock, &srule, sizeof(srule), 0);
+    memcpy(buffer + offset, &srule, sizeof(srule));
+    offset += (sizeof(srule) + 1);
 
-    printf("Rule sent!\n");
+    printf("%s\n", buffer);
+
+    send(sock, buffer, offset, 0);
 }
 
 void process_list_rule(int sock)
@@ -184,37 +185,35 @@ void process_list_rule(int sock)
     stshort(MSG_LIST, &op_code);
     send(sock, &op_code, sizeof(op_code), 0);
 
-    printf("|-----------------|\n");
-    printf("|FORWARD RULE LIST|\n");
-    printf("|-----------------|\n");
+    printf("|-----------------------------------------------|\n");
+    printf("|\t\tFORWARD RULE LIST\t\t|\n");
+    printf("|-----------------------------------------------|\n");
 
-    rule* rrule = malloc(sizeof(rule));
-    memset(&rrule, '\0', sizeof(rrule));
+    int opcode = 0, offset = 0, num_rules = 0;
+    rule aux;
+    char buffer[MAX_BUFF_SIZE];
+    memset(buffer, 0, sizeof(buffer));
 
-    recv(sock, &rrule, sizeof(rrule), 0);
+    recv(sock, buffer, sizeof(buffer), 0);
 
-    int index = 1;
-    char src_dst_addr[MAX_BUFF_SIZE], src_dst_port[MAX_BUFF_SIZE];
+    opcode = ldshort(buffer);
+    offset += sizeof(short);
+    memcpy(&num_rules, buffer, offset);
+    offset += sizeof(short);
 
-    //Damnit son
-    while(rrule != NULL)
+    int i = 0;
+    while(i < num_rules)
     {
-        if(rrule->src_dst_addr == SRC)
-            strcpy(src_dst_addr, "src");
-        else if (rrule->src_dst_addr == DST)
-                strcpy(src_dst_addr, "dst");
-
-        if(rrule->src_dst_port == SRC)
-            strcpy(src_dst_port, "sport");
-        else if(rrule->src_dst_port == DST)
-            strcpy(src_dst_port, "dport");
-
-        printf("%d %s %s %d %s %d\n", index, src_dst_addr, inet_ntoa(rrule->addr),
-        rrule->mask, src_dst_port, rrule->port);
-
-        recv(sock, &rrule, sizeof(rrule), 0);
-        index++;
+        memset(&aux, 0, sizeof(aux));
+        memcpy(&aux, (buffer + offset), sizeof(aux) + sizeof(offset));
+        printf("|  %d. ", i+1);
+        print(aux);
+        printf("\t\t|\n");
+        offset += sizeof(rule);
+        i++;
     }
+
+    printf("|-----------------------------------------------|\n");
 }
 
 /**

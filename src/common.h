@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_BUFF_SIZE 1024 
+#define MAX_BUFF_SIZE 1024
 
 #define DEFAULT_PORT 2222
 
@@ -47,7 +47,7 @@ typedef enum{
 
 // Macros per afegir i extreure un short d'un missatge
 #define stshort(sval, addr) ( *((short *)(addr))=htons(sval) )
-#define ldshort(addr) ( ntohs(*((short *)(addr)) ) ) 
+#define ldshort(addr) ( ntohs(*((short *)(addr)) ) )
 
 /**
  * Structures directly mapped with a message to be sent or received
@@ -59,7 +59,7 @@ typedef enum{
 /*
               2 bytes  11 bytes       1 byte
               ------------------------------
-HELLO_RP      |  2     | Hello World | 0   | 
+HELLO_RP      |  2     | Hello World | 0   |
               ------------------------------
 */
 struct hello_rp{
@@ -81,3 +81,6 @@ typedef struct FORWARD_rule{
   unsigned short src_dst_port;
   unsigned short port;
 }rule;
+
+// Functions that will be used in both programs, client and server
+void print(rule r);

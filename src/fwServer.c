@@ -56,6 +56,12 @@ void process_HELLO_msg(int sock)
   send(sock, &hello_rp, sizeof(hello_rp), 0);
 }
 
+/**
+ * Function that gathers all the rules in the server, appends to a buffer
+ * and sends it to the client.
+ * @param sock the communications socket.
+ * @param struct FORWARD_chain* chain List of all the rules in the server.
+ */
 void process_LIST(int sock, struct FORWARD_chain *chain)
 {
     int offset = 0;
@@ -81,6 +87,12 @@ void process_LIST(int sock, struct FORWARD_chain *chain)
     send(sock, buffer, offset, 0);
 }
 
+/**
+ * Function that adds a rule into the server.
+ * @param sock the communications socket.
+ * @param struct FORWARD_chain* chain List of all the rules in the server.
+ * @param buffer buffer containing the new rule
+ */
 void process_ADD(int sock, struct FORWARD_chain *chain, char* buffer)
 {
     int offset = sizeof(short);
@@ -125,6 +137,13 @@ void process_ADD(int sock, struct FORWARD_chain *chain, char* buffer)
     send(sock, opcode, sizeof(opcode), 0);
 }
 
+/**
+ * Function that changes a rule of the server.
+ * @param sock the communications socket.
+ * @param struct FORWARD_chain* chain List of all the rules in the server.
+ * @param buffer buffer containing the new rule and the index of the rule
+ *               to be changed.
+ */
 void process_CHANGE(int sock, struct FORWARD_chain* chain, char* buffer)
 {
     char opcode[MAX_BUFF_SIZE];
@@ -165,6 +184,12 @@ void process_CHANGE(int sock, struct FORWARD_chain* chain, char* buffer)
     }
 }
 
+/**
+ * Function that deletes a rule from the server.
+ * @param sock the communications socket.
+ * @param struct FORWARD_chain* chain List of all the rules in the server.
+ * @param buffer buffer containing the index of the rule to be deleted.
+ */
 void process_DELETE(int sock, struct FORWARD_chain* chain, char* buffer)
 {
     char opcode[MAX_BUFF_SIZE];
@@ -210,6 +235,11 @@ void process_DELETE(int sock, struct FORWARD_chain* chain, char* buffer)
     }
 }
 
+/**
+ * Function that deletes all rules in the server.
+ * @param sock the communications socket.
+ * @param struct FORWARD_chain* chain List of all the rules in the server.
+ */
 void process_FLUSH(int sock, struct FORWARD_chain* chain)
 {
     char opcode[MAX_BUFF_SIZE];
@@ -219,7 +249,6 @@ void process_FLUSH(int sock, struct FORWARD_chain* chain)
     if(chain->first_rule == NULL)
     {
         stshort(MSG_ERR, &opcode);
-        send(sock, opcode, sizeof(opcode), 0);
     }
 
     else
@@ -231,9 +260,9 @@ void process_FLUSH(int sock, struct FORWARD_chain* chain)
         }
 
         stshort(MSG_OK, &opcode);
-        send(sock, opcode, sizeof(opcode), 0);
     }
 
+    send(sock, opcode, sizeof(opcode), 0);
 }
 
 void process_FINISH_msg(int sock)

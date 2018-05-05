@@ -134,6 +134,10 @@ void process_hello_operation(int sock)
   printf("Recived: %s\n", hello_rp.msg);
 }
 
+/**
+ * Sends a LIST Request to recive all rules at the server and print them.
+ * @param sock socket used for the communication.
+ */
 void process_list_rule(int sock)
 {
     int op_code;
@@ -179,7 +183,7 @@ void process_list_rule(int sock)
 }
 
 /**
- * Sends a ADD Request with a rule to be added into the rule list at server.
+ * Sends an ADD Request with a rule to be added into the rule list at server.
  * @param sock socket used for communication.
  */
 void process_add_rule(int sock)
@@ -217,6 +221,10 @@ void process_add_rule(int sock)
     }
 }
 
+/**
+ * Sends a CHANGE Request with the index and the new rule to be changed at the server.
+ * @param sock socket used for the communication.
+ */
 void process_change_rule(int sock)
 {
     char buffer[MAX_BUFF_SIZE], recivedcode[MAX_BUFF_SIZE];
@@ -253,6 +261,10 @@ void process_change_rule(int sock)
         printf("Cannot add rule.\n");
 }
 
+/**
+ * Sends a DELETE Request with the index of the rule to be deleted at the server.
+ * @param sock socket used for the communication.
+ */
 void process_DELETE_RULE(int sock)
 {
     unsigned short opcode;
@@ -281,6 +293,10 @@ void process_DELETE_RULE(int sock)
         printf("Cannot delete rule.\n");
 }
 
+/**
+ * Sends a FLUSH Request to delete all rules at the server.
+ * @param sock socket used for the communication.
+ */
 void process_FLUSH(int sock)
 {
     unsigned short opcode;
@@ -371,7 +387,6 @@ int main(int argc, char *argv[]){
     source.sin_family = AF_INET;
     source.sin_port = htons(port);
     setaddrbyname(&source, hostName);
-    //source.sin_addr.s_addr = INADDR_ANY;
 
     connect(s,(struct sockaddr*)&source, sizeof(source));
 

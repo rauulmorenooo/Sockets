@@ -1,4 +1,4 @@
-/***************************************************************************
+    /***************************************************************************
  *            fwClient.h
  *
  *  Copyright  2016  mc
@@ -119,7 +119,6 @@ void print_menu()
 		printf("Escull una opcio: ");
 }
 
-
 /**
  * Sends a HELLO message and prints the server response.
  * @param sock socket used for the communication.
@@ -135,6 +134,10 @@ void process_hello_operation(int sock)
   printf("Recived bytes: %d, with the message: %s\n", recived_bytes, hello_rp.msg);
 }
 
+/**
+ * Sends a ADD Request with a rule to be added into the rule list at server.
+ * @param sock socket used for communication.
+ */
 void process_add_rule(int sock)
 {
     char buffer[MAX_BUFF_SIZE];
@@ -152,29 +155,10 @@ void process_add_rule(int sock)
     stshort(MSG_ADD, buffer);
     offset += sizeof(short);
 
-    rule srule;
-
-    if(strcmp(src_dst_address, "src") == 0)
-        srule.src_dst_addr = SRC;
-    else
-        if(strcmp(src_dst_address, "dst") == 0)
-            srule.src_dst_addr = DST;
-
-    inet_aton(ip_address, &srule.addr);
-
-    srule.mask = netmask;
-
-    if(strcmp(src_dst_port, "dport") == 0)
-        srule.src_dst_port = DST;
-    else
-        srule.src_dst_port = SRC;
-
-    srule.port = port;
+    rule srule = setRule(src_dst_address, ip_address, netmask, src_dst_port, port);
 
     memcpy(buffer + offset, &srule, sizeof(srule));
     offset += (sizeof(srule) + 1);
-
-    printf("%s\n", buffer);
 
     send(sock, buffer, offset, 0);
 }
@@ -206,14 +190,39 @@ void process_list_rule(int sock)
     {
         memset(&aux, 0, sizeof(aux));
         memcpy(&aux, (buffer + offset), sizeof(aux) + sizeof(offset));
-        printf("|  %d. ", i+1);
+        printf("   %d. ", i+1);
         print(aux);
-        printf("\t\t|\n");
         offset += sizeof(rule);
         i++;
     }
 
     printf("|-----------------------------------------------|\n");
+}
+
+void process_change_rule(int sock)
+{
+    char buffer[MAX_BUFF_SIZE];
+    memset(buffer, 0, sizeof(buffer));
+    stshort(MSG_CHANGE, buffer);
+
+    int offset = sizeof(short);
+
+    char src_dst_address[MAX_BUFF_SIZE], ip_address[MAX_BUFF_SIZE],
+    src_dst_port[MAX_BUFF_SIZE];
+    int netmask, port, index;
+
+    printf("Introduce the index and new rule you want to modify, with format (src|dst address netmask [sport|dport] port): \n");
+    scanf("%d %s %s %d %s %d", &index, &src_dst_address, &ip_address, &netmask, &src_dst_port, &port);
+    printf("Rule %d will become %s %s %d %s %d", index, src_dst_address, ip_address, netmask, src_dst_port, port);
+
+    memcpy(buffer + offset, &index, sizeof(index));
+    offset += sizeof(int);
+
+    rule srule = setRule(src_dst_address, ip_address, netmask, src_dst_port, port);
+    memcpy(buffer + offset, &srule, sizeof(srule));
+    offset += (sizeof(srule) + 1);
+
+    send(sock, &buffer, offset, 0);
 }
 
 /**
@@ -250,6 +259,7 @@ void process_menu_option(int s, int option)
       process_add_rule(s);
       break;
     case MENU_OP_CHANGE_RULE:
+    process_change_rule(s);
       break;
     case MENU_OP_DEL_RULE:
       break;

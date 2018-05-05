@@ -58,7 +58,6 @@ void process_HELLO_msg(int sock)
 void process_ADD(int sock, struct FORWARD_chain *chain, char* buffer)
 {
     int offset = sizeof(short);
-    char src_dst_addr[MAX_BUFF_SIZE], src_dst_port[MAX_BUFF_SIZE];
 
     if(chain->first_rule == NULL) //Chain is empty
     {
@@ -68,7 +67,6 @@ void process_ADD(int sock, struct FORWARD_chain *chain, char* buffer)
         chain->first_rule->next_rule = NULL;
         printf("Recived rule: ");
         print(chain->first_rule->rule);
-        printf("\n");
     }
 
     else
@@ -84,7 +82,6 @@ void process_ADD(int sock, struct FORWARD_chain *chain, char* buffer)
         aux->next_rule->next_rule = NULL;
         printf("Recived rule: ");
         print(aux->next_rule->rule);
-        printf("\n");
     }
 
     chain->num_rules++;
@@ -114,6 +111,15 @@ void process_LIST(int sock, struct FORWARD_chain *chain)
     }
 
     send(sock, buffer, offset, 0);
+}
+
+void process_CHANGE(int sock, struct FORWARD_chain* chain, char* buffer)
+{
+    int index = 0, offset = sizeof(short);
+    rule rrule;
+    memcpy(&index, buffer, sizeof(index));
+    offset += sizeof(index);
+    printf("Recived index is: %d\n", index);
 }
 
 void process_FINISH_msg(int sock)
@@ -150,7 +156,9 @@ int process_msg(int sock, struct FORWARD_chain *chain)
       break;
     case MSG_ADD:
       process_ADD(sock, chain, buffer);
+      break;
     case MSG_CHANGE:
+      process_CHANGE(sock, chain, buffer);
       break;
     case MSG_DELETE:
       break;

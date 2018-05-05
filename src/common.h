@@ -84,3 +84,4 @@ typedef struct FORWARD_rule{
 
 // Functions that will be used in both programs, client and server
 void print(rule r);
+rule setRule(char* src_dst_addr, char* ip_address, int netmask, char* src_dst_port, int port);

@@ -131,36 +131,7 @@ void process_hello_operation(int sock)
   send(sock, &hello_rp, sizeof(hello_rp), 0);
 
   int recived_bytes = recv(sock, &hello_rp, sizeof(hello_rp), 0);
-  printf("Recived bytes: %d, with the message: %s\n", recived_bytes, hello_rp.msg);
-}
-
-/**
- * Sends a ADD Request with a rule to be added into the rule list at server.
- * @param sock socket used for communication.
- */
-void process_add_rule(int sock)
-{
-    char buffer[MAX_BUFF_SIZE];
-    int offset = 0;
-
-    memset(buffer, 0, sizeof(buffer));
-
-    char src_dst_address[MAX_BUFF_SIZE], ip_address[MAX_BUFF_SIZE],
-    src_dst_port[MAX_BUFF_SIZE];
-    int netmask, port;
-
-    printf("Introduce the rule in the format (src|dst address netmask [sport|dport] port): \n");
-    scanf("%s %s %d %s %d", &src_dst_address, &ip_address, &netmask, &src_dst_port, &port);
-
-    stshort(MSG_ADD, buffer);
-    offset += sizeof(short);
-
-    rule srule = setRule(src_dst_address, ip_address, netmask, src_dst_port, port);
-
-    memcpy(buffer + offset, &srule, sizeof(srule));
-    offset += (sizeof(srule) + 1);
-
-    send(sock, buffer, offset, 0);
+  printf("Recived: %s\n", hello_rp.msg);
 }
 
 void process_list_rule(int sock)
@@ -196,7 +167,46 @@ void process_list_rule(int sock)
         i++;
     }
 
-    printf("|-----------------------------------------------|\n");
+    printf("|-----------------------------------------------|\n\n");
+}
+
+/**
+ * Sends a ADD Request with a rule to be added into the rule list at server.
+ * @param sock socket used for communication.
+ */
+void process_add_rule(int sock)
+{
+    char buffer[MAX_BUFF_SIZE], recivedcode[MAX_BUFF_SIZE];
+    int offset = 0;
+    unsigned short opcode;
+
+    memset(buffer, 0, sizeof(buffer));
+
+    char src_dst_address[MAX_BUFF_SIZE], ip_address[MAX_BUFF_SIZE],
+    src_dst_port[MAX_BUFF_SIZE];
+    int netmask, port;
+
+    printf("Introduce the rule in the format (src|dst address netmask [sport|dport] port): \n");
+    scanf("%s %s %d %s %d", &src_dst_address, &ip_address, &netmask, &src_dst_port, &port);
+
+    stshort(MSG_ADD, buffer);
+    offset += sizeof(short);
+
+    rule srule = setRule(src_dst_address, ip_address, netmask, src_dst_port, port);
+
+    memcpy(buffer + offset, &srule, sizeof(srule));
+    offset += (sizeof(srule) + 1);
+
+    if(send(sock, buffer, offset, 0) > 0)
+    {
+        recv(sock, recivedcode, sizeof(recivedcode), 0);
+        opcode = ldshort(recivedcode);
+        if(opcode == MSG_OK)
+            printf("Rule added correctly.\n");
+
+        else if(opcode == MSG_ERR)
+            printf("Cannot add rule.\n");
+    }
 }
 
 void process_change_rule(int sock)
@@ -213,7 +223,7 @@ void process_change_rule(int sock)
 
     printf("Introduce the index and new rule you want to modify, with format (src|dst address netmask [sport|dport] port): \n");
     scanf("%d %s %s %d %s %d", &index, &src_dst_address, &ip_address, &netmask, &src_dst_port, &port);
-    printf("Rule %d will become %s %s %d %s %d", index, src_dst_address, ip_address, netmask, src_dst_port, port);
+    printf("Rule %d will become %s %s %d %s %d\n", index, src_dst_address, ip_address, netmask, src_dst_port, port);
 
     memcpy(buffer + offset, &index, sizeof(index));
     offset += sizeof(int);
@@ -223,6 +233,37 @@ void process_change_rule(int sock)
     offset += (sizeof(srule) + 1);
 
     send(sock, &buffer, offset, 0);
+
+    //TODO recivir OK o ERR
+}
+
+void process_DELETE_RULE(int sock)
+{
+    unsigned short rcode;
+    int offset = 0, index;
+    char buffer[MAX_BUFF_SIZE], recivedcode[MAX_BUFF_SIZE];
+    memset(buffer, 0, sizeof(buffer));
+    memset(recivedcode, 0, sizeof(recivedcode));
+    stshort(MSG_DELETE, &buffer);
+    offset += sizeof(short);
+
+    printf("Introduce the rule index to be deleted: \n");
+    scanf("%d", index);
+    memcpy(buffer + offset, &index, sizeof(index));
+
+    send(sock, buffer, sizeof(buffer), 0);
+
+    /*if(send(sock, buffer, sizeof(scode), 0) > 0)
+    {
+        recv(sock, buffer, sizeof(buffer), 0);
+        rcode = ldshort(buffer);
+
+        if(opcode == MSG_OK)
+            printf("Rule deleted.\n");
+
+        else if(opcode == MSG_ERR)
+            printf("Cannot delete rule.\n");
+    }*/
 }
 
 /**
@@ -259,9 +300,10 @@ void process_menu_option(int s, int option)
       process_add_rule(s);
       break;
     case MENU_OP_CHANGE_RULE:
-    process_change_rule(s);
+      process_change_rule(s);
       break;
     case MENU_OP_DEL_RULE:
+      process_DELETE_RULE(s);
       break;
     case MENU_OP_FLUSH:
       break;

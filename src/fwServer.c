@@ -48,43 +48,12 @@ void process_HELLO_msg(int sock)
 {
   struct hello_rp hello_rp;
   memset(&hello_rp, '\0', sizeof(hello_rp));
+  stshort(MSG_HELLO_RP, &hello_rp.opcode);
   strcpy(hello_rp.msg, "Hello World");
 
   printf("Sending message: %s\n\n", hello_rp.msg);
 
   send(sock, &hello_rp, sizeof(hello_rp), 0);
-}
-
-void process_ADD(int sock, struct FORWARD_chain *chain, char* buffer)
-{
-    int offset = sizeof(short);
-
-    if(chain->first_rule == NULL) //Chain is empty
-    {
-        printf("Chain is empty. Adding recived rule\n");
-        chain->first_rule = (struct fw_rule*) malloc(sizeof(struct fw_rule));
-        memcpy(&chain->first_rule->rule, (buffer + offset), sizeof(buffer) + sizeof(offset));
-        chain->first_rule->next_rule = NULL;
-        printf("Recived rule: ");
-        print(chain->first_rule->rule);
-    }
-
-    else
-    {
-        printf("Chain isn't empty. Adding recived rule at the end of the chain\n");
-        struct fw_rule* aux = chain->first_rule;
-
-        while(aux->next_rule != NULL)
-            aux = aux->next_rule;
-
-        aux->next_rule = (struct fw_rule*) malloc(sizeof(struct fw_rule));
-        memcpy(&aux->next_rule->rule, (buffer + offset), sizeof(buffer) + sizeof(offset));
-        aux->next_rule->next_rule = NULL;
-        printf("Recived rule: ");
-        print(aux->next_rule->rule);
-    }
-
-    chain->num_rules++;
 }
 
 void process_LIST(int sock, struct FORWARD_chain *chain)
@@ -104,7 +73,6 @@ void process_LIST(int sock, struct FORWARD_chain *chain)
     {
         printf("Appending rule: ");
         print(aux->rule);
-        printf(" to the buffer\n");
         memcpy(buffer + offset, &aux->rule, sizeof(aux->rule));
         offset += sizeof(aux->rule);
         aux = aux->next_rule;
@@ -113,13 +81,108 @@ void process_LIST(int sock, struct FORWARD_chain *chain)
     send(sock, buffer, offset, 0);
 }
 
+void process_ADD(int sock, struct FORWARD_chain *chain, char* buffer)
+{
+    int offset = sizeof(short);
+    int done = FALSE;
+    char opcode[MAX_BUFF_SIZE];
+
+    if(chain->first_rule == NULL)
+    {
+        printf("Chain is empty. Adding recived rule\n");
+        chain->first_rule = (struct fw_rule*) malloc(sizeof(struct fw_rule));
+        memcpy(&chain->first_rule->rule, (buffer + offset), sizeof(buffer) + sizeof(offset));
+        chain->first_rule->next_rule = NULL;
+        printf("Recived rule: ");
+        print(chain->first_rule->rule);
+        done = TRUE;
+    }
+
+    else
+    {
+        printf("Chain isn't empty. Adding recived rule at the end of the chain\n");
+        struct fw_rule* aux = chain->first_rule;
+
+        while(aux->next_rule != NULL)
+            aux = aux->next_rule;
+
+        aux->next_rule = (struct fw_rule*) malloc(sizeof(struct fw_rule));
+        memcpy(&aux->next_rule->rule, (buffer + offset), sizeof(buffer) + sizeof(offset));
+        aux->next_rule->next_rule = NULL;
+        printf("Recived rule: ");
+        print(aux->next_rule->rule);
+        done = TRUE;
+    }
+
+    chain->num_rules++;
+
+    if(done == TRUE)
+        stshort(MSG_OK, &opcode);
+
+    else
+        stshort(MSG_ERR, &opcode);
+
+    send(sock, opcode, sizeof(opcode), 0);
+}
+
 void process_CHANGE(int sock, struct FORWARD_chain* chain, char* buffer)
 {
     int index = 0, offset = sizeof(short);
-    rule rrule;
-    memcpy(&index, buffer, sizeof(index));
+    memcpy(&index, buffer + offset, sizeof(index));
     offset += sizeof(index);
-    printf("Recived index is: %d\n", index);
+    rule rrule;
+    memset(&rrule, 0, sizeof(rrule));
+    memcpy(&rrule, buffer + offset, sizeof(rrule));
+    printf("Changing rule at index: %d\n", index);
+
+    if (index <= chain->num_rules) // The index recived is in the rule list
+    {
+        int i = 1;
+        struct fw_rule* aux = chain->first_rule;
+
+        while (i < index)
+        {
+            aux = aux->next_rule;
+            i++;
+        }
+
+        aux->rule = rrule;
+        printf("Rule at index %d will become: ", index);
+        print(rrule);
+    }
+
+    else
+    {
+        printf("ERROR. Recived index is not in the list range.\n");
+    }
+
+    //TODO enviar OK o ERR.
+}
+
+void process_DELETE(int sock, struct FORWARD_chain* chain, char* buffer)
+{
+    int index = 0, offset = sizeof(short);
+    memcpy(&index, buffer + offset, sizeof(index));
+
+    if(index <= chain->num_rules)
+    {
+        int i = 1;
+        struct fw_rule* previous = chain->first_rule;
+        struct fw_rule* aux = previous->next_rule;
+
+        while(i < index)
+        {
+            previous = aux;
+            aux = aux->next_rule;
+            i++;
+        }
+
+        previous->next_rule = aux->next_rule;
+        free(aux);
+        chain->num_rules--;
+    }
+
+    //TODO enviar OK o ERR.
 }
 
 void process_FINISH_msg(int sock)
@@ -161,6 +224,7 @@ int process_msg(int sock, struct FORWARD_chain *chain)
       process_CHANGE(sock, chain, buffer);
       break;
     case MSG_DELETE:
+      process_DELETE(sock, chain, buffer);
       break;
     case MSG_FLUSH:
       break;

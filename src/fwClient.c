@@ -130,7 +130,7 @@ void process_hello_operation(int sock)
   stshort(MSG_HELLO, &hello_rp.opcode);
   send(sock, &hello_rp, sizeof(hello_rp), 0);
 
-  int recived_bytes = recv(sock, &hello_rp, sizeof(hello_rp), 0);
+  recv(sock, &hello_rp, sizeof(hello_rp), 0);
   printf("Recived: %s\n", hello_rp.msg);
 }
 
@@ -139,10 +139,6 @@ void process_list_rule(int sock)
     int op_code;
     stshort(MSG_LIST, &op_code);
     send(sock, &op_code, sizeof(op_code), 0);
-
-    printf("|-----------------------------------------------|\n");
-    printf("|\t\tFORWARD RULE LIST\t\t|\n");
-    printf("|-----------------------------------------------|\n");
 
     int opcode = 0, offset = 0, num_rules = 0;
     rule aux;
@@ -156,18 +152,30 @@ void process_list_rule(int sock)
     memcpy(&num_rules, buffer, offset);
     offset += sizeof(short);
 
-    int i = 0;
-    while(i < num_rules)
+    if(num_rules > 0)
     {
-        memset(&aux, 0, sizeof(aux));
-        memcpy(&aux, (buffer + offset), sizeof(aux) + sizeof(offset));
-        printf("   %d. ", i+1);
-        print(aux);
-        offset += sizeof(rule);
-        i++;
+        printf("|-----------------------------------------------|\n");
+        printf("|\t\tFORWARD RULE LIST\t\t|\n");
+        printf("|-----------------------------------------------|\n");
+
+        int i = 0;
+        while(i < num_rules)
+        {
+            memset(&aux, 0, sizeof(aux));
+            memcpy(&aux, (buffer + offset), sizeof(aux) + sizeof(offset));
+            printf("   %d. ", i+1);
+            print(aux);
+            offset += sizeof(rule);
+            i++;
+        }
+
+        printf("|-----------------------------------------------|\n\n");
     }
 
-    printf("|-----------------------------------------------|\n\n");
+    else
+    {
+        printf("ERROR. There are no rules to be listed.\n\n");
+    }
 }
 
 /**
@@ -211,7 +219,8 @@ void process_add_rule(int sock)
 
 void process_change_rule(int sock)
 {
-    char buffer[MAX_BUFF_SIZE];
+    char buffer[MAX_BUFF_SIZE], recivedcode[MAX_BUFF_SIZE];
+    unsigned short opcode;
     memset(buffer, 0, sizeof(buffer));
     stshort(MSG_CHANGE, buffer);
 
@@ -232,14 +241,21 @@ void process_change_rule(int sock)
     memcpy(buffer + offset, &srule, sizeof(srule));
     offset += (sizeof(srule) + 1);
 
-    send(sock, &buffer, offset, 0);
+    send(sock, buffer, offset, 0);
 
-    //TODO recivir OK o ERR
+    recv(sock, recivedcode, sizeof(recivedcode), 0);
+    opcode = ldshort(recivedcode);
+
+    if(opcode == MSG_OK)
+        printf("Rule added correctly.\n");
+
+    else if(opcode == MSG_ERR)
+        printf("Cannot add rule.\n");
 }
 
 void process_DELETE_RULE(int sock)
 {
-    unsigned short rcode;
+    unsigned short opcode;
     int offset = 0, index;
     char buffer[MAX_BUFF_SIZE], recivedcode[MAX_BUFF_SIZE];
     memset(buffer, 0, sizeof(buffer));
@@ -248,22 +264,41 @@ void process_DELETE_RULE(int sock)
     offset += sizeof(short);
 
     printf("Introduce the rule index to be deleted: \n");
-    scanf("%d", index);
+    scanf("%d", &index);
     memcpy(buffer + offset, &index, sizeof(index));
 
     send(sock, buffer, sizeof(buffer), 0);
 
-    /*if(send(sock, buffer, sizeof(scode), 0) > 0)
-    {
-        recv(sock, buffer, sizeof(buffer), 0);
-        rcode = ldshort(buffer);
+    send(sock, buffer, sizeof(buffer), 0);
 
-        if(opcode == MSG_OK)
-            printf("Rule deleted.\n");
+    recv(sock, recivedcode, sizeof(recivedcode), 0);
+    opcode = ldshort(recivedcode);
 
-        else if(opcode == MSG_ERR)
-            printf("Cannot delete rule.\n");
-    }*/
+    if(opcode == MSG_OK)
+        printf("Rule deleted.\n");
+
+    else if(opcode == MSG_ERR)
+        printf("Cannot delete rule.\n");
+}
+
+void process_FLUSH(int sock)
+{
+    unsigned short opcode;
+    char buffer[MAX_BUFF_SIZE], recivedcode[MAX_BUFF_SIZE];
+    memset(buffer, 0, sizeof(buffer));
+    memset(recivedcode, 0, sizeof(recivedcode));
+    stshort(MSG_FLUSH, &buffer);
+
+    send(sock, buffer, sizeof(buffer), 0);
+
+    recv(sock, recivedcode, sizeof(recivedcode), 0);
+    opcode = ldshort(recivedcode);
+
+    if(opcode == MSG_OK)
+        printf("All rules have been deleted.\n");
+
+    else if(opcode == MSG_ERR)
+        printf("ERROR. There was a problem deleting rules.\n");
 }
 
 /**
@@ -306,6 +341,7 @@ void process_menu_option(int s, int option)
       process_DELETE_RULE(s);
       break;
     case MENU_OP_FLUSH:
+      process_FLUSH(s);
       break;
     case MENU_OP_EXIT:
       process_exit_operation(s);

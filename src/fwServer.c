@@ -127,6 +127,7 @@ void process_ADD(int sock, struct FORWARD_chain *chain, char* buffer)
 
 void process_CHANGE(int sock, struct FORWARD_chain* chain, char* buffer)
 {
+    char opcode[MAX_BUFF_SIZE];
     int index = 0, offset = sizeof(short);
     memcpy(&index, buffer + offset, sizeof(index));
     offset += sizeof(index);
@@ -149,40 +150,90 @@ void process_CHANGE(int sock, struct FORWARD_chain* chain, char* buffer)
         aux->rule = rrule;
         printf("Rule at index %d will become: ", index);
         print(rrule);
+
+
+        stshort(MSG_OK, &opcode);
+        send(sock, opcode, sizeof(opcode), 0);
     }
 
     else
     {
         printf("ERROR. Recived index is not in the list range.\n");
-    }
 
-    //TODO enviar OK o ERR.
+        stshort(MSG_ERR, &opcode);
+        send(sock, opcode, sizeof(opcode), 0);
+    }
 }
 
 void process_DELETE(int sock, struct FORWARD_chain* chain, char* buffer)
 {
+    char opcode[MAX_BUFF_SIZE];
     int index = 0, offset = sizeof(short);
     memcpy(&index, buffer + offset, sizeof(index));
 
     if(index <= chain->num_rules)
     {
         int i = 1;
-        struct fw_rule* previous = chain->first_rule;
-        struct fw_rule* aux = previous->next_rule;
+        struct fw_rule* previous;
+        struct fw_rule* aux = chain->first_rule;
 
-        while(i < index)
+        if (index == 1)
         {
-            previous = aux;
-            aux = aux->next_rule;
-            i++;
+            previous = aux->next_rule;
+            free(aux);
+            chain->first_rule = previous;
+            chain->num_rules--;
         }
 
-        previous->next_rule = aux->next_rule;
-        free(aux);
-        chain->num_rules--;
+        else
+        {
+            while(i < index)
+            {
+                previous = aux;
+                aux = aux->next_rule;
+                i++;
+            }
+
+            previous->next_rule = aux->next_rule;
+            free(aux);
+            chain->num_rules--;
+        }
+
+        stshort(MSG_OK, &opcode);
+        send(sock, opcode, sizeof(opcode), 0);
     }
 
-    //TODO enviar OK o ERR.
+    else
+    {
+        stshort(MSG_ERR, &opcode);
+        send(sock, opcode, sizeof(opcode), 0);
+    }
+}
+
+void process_FLUSH(int sock, struct FORWARD_chain* chain)
+{
+    char opcode[MAX_BUFF_SIZE];
+
+    struct fw_rule* aux = chain->first_rule;
+
+    if(chain->first_rule == NULL)
+    {
+        stshort(MSG_ERR, &opcode);
+        send(sock, opcode, sizeof(opcode), 0);
+    }
+
+    else
+    {
+        while(chain->first_rule != NULL)
+        {
+            chain->first_rule = aux->next_rule;
+            free(aux);
+        }
+
+        stshort(MSG_OK, &opcode);
+        send(sock, opcode, sizeof(opcode), 0);
+    }
+
 }
 
 void process_FINISH_msg(int sock)
@@ -227,6 +278,7 @@ int process_msg(int sock, struct FORWARD_chain *chain)
       process_DELETE(sock, chain, buffer);
       break;
     case MSG_FLUSH:
+      process_FLUSH(sock, chain);
       break;
     case MSG_FINISH:
       process_FINISH_msg(sock);

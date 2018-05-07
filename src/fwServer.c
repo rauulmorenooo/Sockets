@@ -67,11 +67,10 @@ void process_LIST(int sock, struct FORWARD_chain *chain)
     int offset = 0;
     char buffer[MAX_BUFF_SIZE];
     memset(buffer, 0, sizeof(buffer));
-    stshort(MSG_RULES, buffer);
-    offset += sizeof(short);
-
-    memcpy(buffer, &chain->num_rules, sizeof(chain->num_rules));
-    offset += sizeof(short);
+    stshort(MSG_RULES, &buffer);
+    offset += sizeof(unsigned short);
+    memcpy(buffer + offset, &chain->num_rules, sizeof(chain->num_rules));
+    offset += sizeof(int);
 
     struct fw_rule* aux = chain->first_rule;
 
@@ -95,7 +94,7 @@ void process_LIST(int sock, struct FORWARD_chain *chain)
  */
 void process_ADD(int sock, struct FORWARD_chain *chain, char* buffer)
 {
-    int offset = sizeof(short);
+    int offset = sizeof(unsigned short);
     int done = FALSE;
     char opcode[MAX_BUFF_SIZE];
 
@@ -147,7 +146,7 @@ void process_ADD(int sock, struct FORWARD_chain *chain, char* buffer)
 void process_CHANGE(int sock, struct FORWARD_chain* chain, char* buffer)
 {
     char opcode[MAX_BUFF_SIZE];
-    int index = 0, offset = sizeof(short);
+    int index = 0, offset = sizeof(unsigned short);
     memcpy(&index, buffer + offset, sizeof(index));
     offset += sizeof(index);
     rule rrule;
@@ -193,7 +192,7 @@ void process_CHANGE(int sock, struct FORWARD_chain* chain, char* buffer)
 void process_DELETE(int sock, struct FORWARD_chain* chain, char* buffer)
 {
     char opcode[MAX_BUFF_SIZE];
-    int index = 0, offset = sizeof(short);
+    int index = 0, offset = sizeof(unsigned short);
     memcpy(&index, buffer + offset, sizeof(index));
 
     if(index <= chain->num_rules)
@@ -204,9 +203,11 @@ void process_DELETE(int sock, struct FORWARD_chain* chain, char* buffer)
 
         if (index == 1)
         {
+            printf("Deleting the following rule: ");
+            print(aux->rule);
             previous = aux->next_rule;
-            free(aux);
             chain->first_rule = previous;
+            free(aux);
             chain->num_rules--;
         }
 
@@ -218,7 +219,11 @@ void process_DELETE(int sock, struct FORWARD_chain* chain, char* buffer)
                 aux = aux->next_rule;
                 i++;
             }
+            printf("Deleting the following rule: ");
+            print(aux->rule);
 
+            if(aux->next_rule == NULL)
+                printf("There are no next rule!\n");
             previous->next_rule = aux->next_rule;
             free(aux);
             chain->num_rules--;
@@ -230,6 +235,7 @@ void process_DELETE(int sock, struct FORWARD_chain* chain, char* buffer)
 
     else
     {
+        printf("There was an  error deleting the rule.\n");
         stshort(MSG_ERR, &opcode);
         send(sock, opcode, sizeof(opcode), 0);
     }
@@ -250,15 +256,15 @@ void process_FLUSH(int sock, struct FORWARD_chain* chain)
     {
         stshort(MSG_ERR, &opcode);
     }
-
     else
     {
         while(chain->first_rule != NULL)
         {
             chain->first_rule = aux->next_rule;
             free(aux);
+            aux = chain->first_rule;
         }
-
+        chain->num_rules = 0;
         stshort(MSG_OK, &opcode);
     }
 
@@ -339,8 +345,7 @@ int process_msg(int sock, struct FORWARD_chain *chain)
 
   bind(s_serv, (struct sockaddr*)&addr, sizeof(addr));
 
-  int backlog = 10;
-  listen(s_serv, backlog);
+  listen(s_serv, MAX_QUEUED_CON);
 
   struct sockaddr client_addr;
   socklen_t client_addr_len = sizeof(client_addr);

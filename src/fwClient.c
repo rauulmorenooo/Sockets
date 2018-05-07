@@ -144,17 +144,20 @@ void process_list_rule(int sock)
     stshort(MSG_LIST, &op_code);
     send(sock, &op_code, sizeof(op_code), 0);
 
-    int opcode = 0, offset = 0, num_rules = 0;
+    unsigned short opcode = 0;
+    int offset = 0;
+    int num_rules = 0;
     rule aux;
     char buffer[MAX_BUFF_SIZE];
     memset(buffer, 0, sizeof(buffer));
 
     recv(sock, buffer, sizeof(buffer), 0);
 
-    opcode = ldshort(buffer);
-    offset += sizeof(short);
-    memcpy(&num_rules, buffer, offset);
-    offset += sizeof(short);
+    memcpy(&opcode, buffer, sizeof(opcode));
+    offset += sizeof(unsigned short);
+    memcpy(&num_rules, buffer + offset, sizeof(num_rules));
+    printf("There are %d rules at the server.\n", num_rules);
+    offset += sizeof(int);
 
     if(num_rules > 0)
     {
@@ -202,7 +205,7 @@ void process_add_rule(int sock)
     scanf("%s %s %d %s %d", &src_dst_address, &ip_address, &netmask, &src_dst_port, &port);
 
     stshort(MSG_ADD, buffer);
-    offset += sizeof(short);
+    offset += sizeof(unsigned short);
 
     rule srule = setRule(src_dst_address, ip_address, netmask, src_dst_port, port);
 
@@ -232,7 +235,7 @@ void process_change_rule(int sock)
     memset(buffer, 0, sizeof(buffer));
     stshort(MSG_CHANGE, buffer);
 
-    int offset = sizeof(short);
+    int offset = sizeof(unsigned short);
 
     char src_dst_address[MAX_BUFF_SIZE], ip_address[MAX_BUFF_SIZE],
     src_dst_port[MAX_BUFF_SIZE];
@@ -255,7 +258,7 @@ void process_change_rule(int sock)
     opcode = ldshort(recivedcode);
 
     if(opcode == MSG_OK)
-        printf("Rule added correctly.\n");
+        printf("Rule changed correctly.\n");
 
     else if(opcode == MSG_ERR)
         printf("Cannot add rule.\n");
@@ -273,24 +276,22 @@ void process_DELETE_RULE(int sock)
     memset(buffer, 0, sizeof(buffer));
     memset(recivedcode, 0, sizeof(recivedcode));
     stshort(MSG_DELETE, &buffer);
-    offset += sizeof(short);
+    offset += sizeof(unsigned short);
 
     printf("Introduce the rule index to be deleted: \n");
     scanf("%d", &index);
     memcpy(buffer + offset, &index, sizeof(index));
 
     send(sock, buffer, sizeof(buffer), 0);
-
-    send(sock, buffer, sizeof(buffer), 0);
-
     recv(sock, recivedcode, sizeof(recivedcode), 0);
     opcode = ldshort(recivedcode);
 
     if(opcode == MSG_OK)
         printf("Rule deleted.\n");
 
-    else if(opcode == MSG_ERR)
-        printf("Cannot delete rule.\n");
+    else
+        if(opcode == MSG_ERR)
+            printf("Cannot delete rule.\n");
 }
 
 /**
@@ -313,8 +314,9 @@ void process_FLUSH(int sock)
     if(opcode == MSG_OK)
         printf("All rules have been deleted.\n");
 
-    else if(opcode == MSG_ERR)
-        printf("ERROR. There was a problem deleting rules.\n");
+    else
+        if(opcode == MSG_ERR)
+            printf("ERROR. There was a problem deleting rules.\n");
 }
 
 /**

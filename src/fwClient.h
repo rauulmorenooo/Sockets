@@ -38,7 +38,7 @@
 
 
 /**
- * Function that sets the field addr->sin_addr.s_addr from a host name 
+ * Function that sets the field addr->sin_addr.s_addr from a host name
  * address.
  * @param addr struct where to set the address.
  * @param host the host name to be converted
@@ -51,7 +51,7 @@ int setaddrbyname(struct sockaddr_in *addr, char *host);
  * if no port has been specified.
  * @param argc the number of the application arguments.
  * @param an array with all the application arguments.
- * @return  the port number from the command line or the default port if 
+ * @return  the port number from the command line or the default port if
  * no port has been specified in the command line. Returns -1 if the application
  * has been called with the wrong parameters.
  */
@@ -65,14 +65,14 @@ int getPort(int argc, char* argv[]);
  * Returns -1 if the application has been called with the wrong parameters.
  */
  char * getHost(int argc, char* argv[]);
- 
+
  /**
- * Shows the menu options. 
+ * Shows the menu options.
  */
 void print_menu();
 
-/** 
- * Function that process the menu option set by the user by calling 
+/**
+ * Function that process the menu option set by the user by calling
  * the function related to the menu option.
  * @param s The communications socket
  * @param option the menu option specified by the user.
@@ -84,3 +84,9 @@ void process_menu_option(int s, int option);
  * @param sock socket used for the communication.
  */
 void process_hello_operation(int sock);
+void process_list_rule(int sock);
+void process_add_rule(int sock);
+void process_change_rule(int sock);
+void process_DELETE_RULE(int sock);
+void process_FLUSH(int sock);
+void process_exit_operation(int sock);

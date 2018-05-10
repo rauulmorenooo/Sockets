@@ -273,7 +273,9 @@ void process_FLUSH(int sock, struct FORWARD_chain* chain)
 
 void process_FINISH_msg(int sock)
 {
+    printf("Closing connections with the client...\n");
     close(sock);
+    exit(0);
 }
 
  /**
@@ -350,10 +352,25 @@ int process_msg(int sock, struct FORWARD_chain *chain)
   struct sockaddr client_addr;
   socklen_t client_addr_len = sizeof(client_addr);
 
-  while(1){
-
-      //int s2 = accept(s_serv, (struct sockaddr*)&addr, &addr_len);(
+  while(1)
+  {
       int s2 = accept(s_serv, (struct sockaddr*)&client_addr, &client_addr_len);
+      pid_t pid = fork();
+
+      if (pid == 0) //Childs process_msg
+      {
+          close(s_serv);
+          do
+          {
+              finish = process_msg(s2, &chain);
+          } while(!finish);
+      }
+      else
+      {
+          close(s2);
+      }
+
+      /*int s2 = accept(s_serv, (struct sockaddr*)&client_addr, &client_addr_len);
       close(s_serv);
 
       do{
@@ -361,7 +378,7 @@ int process_msg(int sock, struct FORWARD_chain *chain)
       }while(!finish);
 
       printf("Closing Server...\n");
-      exit(0);
+      exit(0);*/
   }
 
   return 0;

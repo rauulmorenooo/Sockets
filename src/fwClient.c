@@ -283,6 +283,7 @@ void process_DELETE_RULE(int sock)
     memcpy(buffer + offset, &index, sizeof(index));
 
     send(sock, buffer, sizeof(buffer), 0);
+
     recv(sock, recivedcode, sizeof(recivedcode), 0);
     opcode = ldshort(recivedcode);
 

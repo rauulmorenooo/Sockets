@@ -39,13 +39,6 @@
  */
 int getPort(int argc, char* argv[]);
 
-
-  /**
- * Function that sends a HELLO_RP to the  client
- * @param sock the communications socket
- */
-void process_HELLO_msg(int sock);
-
  /**
  * Receives and process the request from a client.
  * @param the socket connected to the client.
@@ -55,3 +48,11 @@ void process_HELLO_msg(int sock);
  * interacting with the client application.
  */
 int process_msg(int sock, struct FORWARD_chain *chain);
+
+void process_HELLO_msg(int sock);
+void process_LIST(int sock, struct FORWARD_chain *chain);
+void process_ADD(int sock, struct FORWARD_chain *chain, char* buffer);
+void process_CHANGE(int sock, struct FORWARD_chain* chain, char* buffer);
+void process_DELETE(int sock, struct FORWARD_chain* chain, char* buffer);
+void process_FLUSH(int sock, struct FORWARD_chain* chain);
+void process_FINISH_msg(int sock);
